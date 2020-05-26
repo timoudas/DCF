@@ -33,62 +33,25 @@ class YahooFin():
     def convert_timestamp(self, raw):
         return datetime.utcfromtimestamp(raw).strftime('%Y-%m-%d')
 
-    def _save_all_plots(self, df):
-        for column in df:
-            with PdfPages('foo.pdf') as pdf:
-                fig=df.plot(x='endDate', y=column).get_figure()
-                pdf.savefig(fig)
-
-
-
-
-
-
-
-class BalanceSheetQ(YahooFin):
-
-    def __init__(self, ticker):
-        super().__init__(ticker)
-        self._module = 'balanceSheetHistoryQuarterly'
-        self._url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-                    f'{self.ticker}?'
-                    f'modules={self.module}')
-        self._df = None
-                    
-    @property
-    def module(self):
-        return self._module
-
-    @property
-    def url(self):
-        return self._url
-
-    @property
-    def df(self):
-        return self._df
-    
-
-    def _balance_sheet(self):
-        data = self.data()
-        query =  data[0]
-        balance_sheet_qty = query['balanceSheetHistoryQuarterly']
-        balance_sheet_statements = balance_sheet_qty['balanceSheetStatements']
-        return balance_sheet_statements
-
-    def extract_raw(self):
-        balance_sheet = self._balance_sheet()
-        for items in balance_sheet:
+    def extract_raw(func):
+      """Decorator to remove keys from from json data 
+      that is retreived from the yahoo-module
+      """
+      def wrapper_extract_raw(self, *args, **kwargs):
+        sheet = func(self)
+        for items in sheet:
             for key, value in items.items():
                 if type(value) == dict and 'fmt' in value:
                     del value['fmt']
                 if type(value) == dict and 'longFmt' in value:
                     del value['longFmt']
-        return balance_sheet
+        return sheet
+      return wrapper_extract_raw
 
     def create_dict(self):
         balance_sheet = []
-        temp_balance_sheet = self.extract_raw()
-        for d in temp_balance_sheet:
+        temp_data = self._dict
+        for d in temp_data:
             temp_dict = {}
             for key, value in d.items():
                 if type(value) == dict and 'raw' in value:
@@ -105,13 +68,72 @@ class BalanceSheetQ(YahooFin):
         self._df = self._df.iloc[::-1]
         return self._df
 
-    def plot(self):
-        self._save_all_plots(self._df)
+class BalanceSheetQ(YahooFin):
 
+  def __init__(self, ticker):
+    super().__init__(ticker)
+    self._module = 'balanceSheetHistoryQuarterly'
+    self._url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+                    f'{self.ticker}?'
+                    f'modules={self.module}')
+    self._dict = self._balance_sheet()
+    self._df = None
+                    
+  @property
+  def module(self):
+      return self._module
+
+  @property
+  def url(self):
+      return self._url
+
+  @property
+  def df(self):
+      return self._df
+
+  @YahooFin.extract_raw
+  def _balance_sheet(self):
+      data = self.data()
+      query =  data[0]
+      balance_sheet_qty = query['balanceSheetHistoryQuarterly']
+      balance_sheet_statements = balance_sheet_qty['balanceSheetStatements']
+      return balance_sheet_statements
+
+
+
+class IncomeStatementQ(YahooFin):
+
+  def __init__(self, ticker):
+        super().__init__(ticker)
+        self._module = 'incomeStatementHistoryQuarterly'
+        self._url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+                    f'{self.ticker}?'
+                    f'modules={self.module}')
+        self._dict = self._income_statement()
+        self._df = None
+
+  @property
+  def module(self):
+      return self._module
+
+  @property
+  def url(self):
+      return self._url
+
+  @property
+  def df(self):
+      return self._df
+
+  @YahooFin.extract_raw
+  def _income_statement(self):
+      data = self.data()
+      query =  data[0]
+      income_statement_qty = query['incomeStatementHistoryQuarterly']
+      income_statement_statements = income_statement_qty['incomeStatementHistory']
+      return income_statement_statements
 
 
 if __name__ == '__main__':
-    data = BalanceSheetQ('INVE-B.ST')
-    df = data.to_df()
-    data.df.plot()
+    data = IncomeStatementQ('INVE-B.ST')
+    print(data.to_df())
 
