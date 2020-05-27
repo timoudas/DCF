@@ -21,7 +21,8 @@ class YahooFin():
 
     def make_request(self, url):
         """Makes a GET request"""
-        return requests.get(url)
+        with requests.Session() as s:
+          return s.get(url)
 
     def get_data(self):
       """Returns a json object from a GET request"""
@@ -30,10 +31,8 @@ class YahooFin():
     def data(self):
       """Returns query result from json object"""
       data_temp = self.get_data()
-      try:
-          return data_temp.get('quoteSummary').get("result")
-      except KeyError as e:
-          print("Something went wrong")
+      return data_temp.get('quoteSummary').get("result")
+
 
     def convert_timestamp(self, raw):
       """Converts UNIX-timestamp to YYYY-MM-DD"""
@@ -145,5 +144,6 @@ class IncomeStatementQ(YahooFin):
 
 if __name__ == '__main__':
     data = IncomeStatementQ('INVE-B.ST')
-    data = data.to_df()
-    data.plot(x='endDate', y='netIncomeApplicableToCommonShares', kind='bar')
+    data_temp = data.data()
+    print(data_temp)
+    
