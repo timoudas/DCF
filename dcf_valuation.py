@@ -34,6 +34,7 @@ class YahooFin():
       return data_temp.get('quoteSummary').get("result")
 
 
+    @staticmethod
     def convert_timestamp(self, raw):
       """Converts UNIX-timestamp to YYYY-MM-DD"""
       return datetime.utcfromtimestamp(raw).strftime('%Y-%m-%d')
