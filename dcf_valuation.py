@@ -12,30 +12,32 @@ from pprint import pprint
 class YahooFin():
     BASE_URL = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
 
-    def __init__(self, ticker):
+    def __init__(self, ticker: str):
       """Initiates the ticker
           Args:
-            ticker (str): Stock-ticker Ex. 'AAPL'
+            ticker: Stock-ticker Ex. 'AAPL'
       """
       self.ticker = ticker
+      self.params = None
 
-    def make_request(self, url):
+    @staticmethod
+    def make_request(url, params):
         """Makes a GET request"""
         with requests.Session() as s:
-          return s.get(url)
+          return s.get(url, params=params)
 
     def get_data(self):
       """Returns a json object from a GET request"""
-      return self.make_request(self.url).json()
+      return self.make_request(self.url, self.params).json()
 
     def data(self):
       """Returns query result from json object"""
       data_temp = self.get_data()
-      return data_temp.get('quoteSummary').get("result")
+      return data_temp.get('quoteSummary').get("result")[0]
 
 
     @staticmethod
-    def convert_timestamp(self, raw):
+    def convert_timestamp(raw):
       """Converts UNIX-timestamp to YYYY-MM-DD"""
       return datetime.utcfromtimestamp(raw).strftime('%Y-%m-%d')
 
@@ -46,10 +48,10 @@ class YahooFin():
       def wrapper_extract_raw(self, *args, **kwargs):
         sheet = func(self)
         for items in sheet:
-            for key, value in items.items():
-                if type(value) == dict and 'fmt' in value:
+            for value in items.values():
+                if isinstance(value, dict) and 'fmt' in value:
                     del value['fmt']
-                if type(value) == dict and 'longFmt' in value:
+                if isinstance(value, dict) and 'longFmt' in value:
                     del value['longFmt']
         return sheet
       return wrapper_extract_raw
@@ -61,7 +63,7 @@ class YahooFin():
       for d in temp_data:
           temp_dict = {}
           for key, value in d.items():
-              if type(value) == dict and 'raw' in value:
+              if isinstance(value, dict) and 'raw' in value:
                   v = value['raw']
                   temp_dict[key] = v
           balance_sheet.append(temp_dict)
@@ -81,6 +83,7 @@ class BalanceSheetQ(YahooFin):
   def __init__(self, ticker):
     super().__init__(ticker)
     self._module = 'balanceSheetHistoryQuarterly'
+    self.params = {'modules': self._module}
     self._url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
                     f'{self.ticker}?'
                     f'modules={self.module}')
@@ -103,10 +106,12 @@ class BalanceSheetQ(YahooFin):
   def _balance_sheet(self):
     """Returns a balance sheet statement"""
     data = self.data()
-    query =  data[0]
-    balance_sheet_qty = query['balanceSheetHistoryQuarterly']
-    balance_sheet_statements = balance_sheet_qty['balanceSheetStatements']
+    query = data['balanceSheetHistoryQuarterly']
+    balance_sheet_statements = query['balanceSheetStatements']
     return balance_sheet_statements
+
+def asset_profil(self):
+  asset_entries = ['cash']
 
 
 
@@ -115,9 +120,9 @@ class IncomeStatementQ(YahooFin):
   def __init__(self, ticker):
         super().__init__(ticker)
         self._module = 'incomeStatementHistoryQuarterly'
+        self.params = {'modules': self._module}
         self._url = (f'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
-                    f'{self.ticker}?'
-                    f'modules={self.module}')
+                    f'{self.ticker}?')
         self._dict = self._income_statement()
         self._df = None
 
@@ -137,14 +142,14 @@ class IncomeStatementQ(YahooFin):
   def _income_statement(self):
     """Returns a income statement"""
     data = self.data()
-    query =  data[0]
-    income_statement_qty = query['incomeStatementHistoryQuarterly']
-    income_statement_statements = income_statement_qty['incomeStatementHistory']
+    query = data['incomeStatementHistoryQuarterly']
+    income_statement_statements = query['incomeStatementHistory']
     return income_statement_statements
 
 
 if __name__ == '__main__':
-    data = IncomeStatementQ('INVE-B.ST')
-    data_temp = data.data()
-    print(data_temp)
+    data = BalanceSheetQ('INVE-B.ST')
+    data_temp = data.to_df()
+    for col in data_temp.columns:
+      print(col)
     
